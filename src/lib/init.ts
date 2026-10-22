@@ -20,18 +20,10 @@ export type InitOptions = {
 export type InitResult = {
   configPath: string;
   configWritten: boolean;
-  hookPath: string;
-  hookWritten: boolean;
   skillPath: string;
   skillWritten: boolean;
   messages: string[];
 };
-
-const COMMIT_MSG_HOOK = `#!/usr/bin/env sh
-set -e
-cd "$(git rev-parse --show-toplevel)"
-bunx agent-review run --scope staged --include-workstream --message-file "$1"
-`;
 
 function writeIfNeeded(dest: string, contents: string, force: boolean, mode?: number): boolean {
   if (existsSync(dest) && !force) return false;
@@ -109,7 +101,7 @@ function installOperatorSkill(opts: {
   return true;
 }
 
-/** Scaffold config, husky commit-msg hook, and operator skill for a consumer repo. */
+/** Scaffold config and operator skill for a consumer repo (husky hook: see `hook`). */
 export function runInit(options: InitOptions = {}): InitResult {
   const cwd = options.cwd ?? process.cwd();
   const force = options.force === true;
@@ -142,20 +134,6 @@ export function runInit(options: InitOptions = {}): InitResult {
       : `kept existing ${path.relative(cwd, configPath) || ".agent-review.json"} (use --force to overwrite)`,
   );
 
-  const hookPath = path.join(cwd, ".husky", "commit-msg");
-  let hookWritten = false;
-  if (existsSync(path.join(cwd, ".husky")) || force) {
-    mkdirSync(path.join(cwd, ".husky"), { recursive: true });
-    hookWritten = writeIfNeeded(hookPath, COMMIT_MSG_HOOK, force, 0o755);
-    messages.push(
-      hookWritten
-        ? `wrote ${path.relative(cwd, hookPath)}`
-        : `kept existing ${path.relative(cwd, hookPath)} (use --force to overwrite)`,
-    );
-  } else {
-    messages.push("skipped husky commit-msg (no .husky/; run bunx husky then re-run init)");
-  }
-
   const skillPath = path.join(cwd, ".agents", "skills", "agent-review");
   const skillWritten = installOperatorSkill({ cwd, force, runSkillsCli });
   messages.push(
@@ -170,13 +148,11 @@ export function runInit(options: InitOptions = {}): InitResult {
   messages.push("  2. Optional package.json scripts:");
   messages.push('       "agent-review": "agent-review",');
   messages.push('       "review": "agent-review run --scope staged --include-workstream"');
-  messages.push("  3. Commit with husky enabled to run the review pipeline");
+  messages.push("  3. Optional husky commit-msg: bunx husky (if needed), then agent-review hook");
 
   return {
     configPath,
     configWritten,
-    hookPath,
-    hookWritten,
     skillPath,
     skillWritten,
     messages,

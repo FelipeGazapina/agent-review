@@ -81,6 +81,12 @@ export {
   gitArgsForScope,
 } from "./lib/git.ts";
 export {
+  COMMIT_MSG_HOOK,
+  type HookOptions,
+  type HookResult,
+  runHook,
+} from "./lib/hook.ts";
+export {
   type InitOptions,
   type InitResult,
   runInit,
