@@ -33,7 +33,7 @@ read-only; you implement fixes (and commit only when using remediate-all).
 ## CLI map
 
 From the repo root (`AI_GATEWAY_API_KEY` required except `log` / `status` /
-`migrate` / `init` / `workstream`):
+`migrate` / `init` / `hook` / `workstream`):
 
 | Command | Purpose |
 |---------|---------|
@@ -46,7 +46,8 @@ From the repo root (`AI_GATEWAY_API_KEY` required except `log` / `status` /
 | `workstream` | Opt-in catalog: start / resume / link / log / done |
 | `commit-message` | Draft Conventional Commits message (stdout) |
 | `migrate` | Legacy layout → `reviews/` |
-| `init` | Scaffold config, husky hook, operator skill |
+| `init` | Scaffold config and operator skill |
+| `hook` | Opt-in husky `commit-msg` (requires `.husky/` or `--force`) |
 
 ```sh
 bunx agent-review run --scope staged --include-workstream

@@ -6,15 +6,30 @@ Review and analyze are **adversarial quality-seeking**: they look for ways a cha
 
 ## Quickstart (consumer repos)
 
+**Global CLI** (recommended when you use agent-review across many repos):
+
+```sh
+bun add -g @khoralabs/agent-review
+cd my-repo
+agent-review init
+bunx husky   # if you do not already use husky
+agent-review hook
+# add AI_GATEWAY_API_KEY to .env
+agent-review run --scope staged --message "feat: …"
+```
+
+**Project-local**:
+
 ```sh
 bun add -d @khoralabs/agent-review
 bunx husky   # if you do not already use husky
 bunx agent-review init
+bunx agent-review hook
 # add AI_GATEWAY_API_KEY to .env
 bunx agent-review run --scope staged --message "feat: …"
 ```
 
-`init` writes `.agent-review.json`, a husky `commit-msg` hook (`bunx agent-review run …`), and **copies** the operator skill to `.agents/skills/agent-review` (no `node_modules` symlink).
+`init` writes `.agent-review.json` and **copies** the operator skill to `.agents/skills/agent-review` (no `node_modules` symlink). `hook` writes the husky `commit-msg` (opt-in; prefers `agent-review` on PATH, falls back to `bunx`).
 
 Suggested `package.json` scripts:
 
@@ -76,9 +91,11 @@ agent-review workstream done --force   # skip retro gate
 # Draft a Conventional Commits message for the staged diff
 agent-review commit-message
 
-# Scaffold config + hook + operator skill
+# Scaffold config + operator skill; optional husky commit-msg
 agent-review init
 agent-review init --force
+agent-review hook
+agent-review hook --force
 
 # Migrate a legacy runs/ + remediations/ data dir to reviews/
 agent-review migrate --output-dir .data/agent-review
@@ -136,10 +153,20 @@ On success, stdout prints the **repo-root–relative** `work-log.jsonl` path.
 
 ## Husky hooks
 
-**Consumers** (from `agent-review init`):
+**Consumers** (from `agent-review hook`):
 
 ```sh
-bunx agent-review run --scope staged --include-workstream --message-file "$1"
+case "$1" in
+  /*) MSG_FILE="$1" ;;
+  *) MSG_FILE="$(pwd)/$1" ;;
+esac
+cd "$(git rev-parse --show-toplevel)"
+export PATH="./node_modules/.bin:$PATH"
+if command -v agent-review >/dev/null 2>&1; then
+  agent-review run --scope staged --include-workstream --message-file "$MSG_FILE"
+else
+  bunx agent-review run --scope staged --include-workstream --message-file "$MSG_FILE"
+fi
 ```
 
 **This repo** (development):
@@ -195,7 +222,7 @@ cp node_modules/@khoralabs/agent-review/.agent-review.example.json .agent-review
 Fields:
 
 - `model` — gateway model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
-- `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` / `workstream` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
+- `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` / `hook` / `workstream` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
 - `skills` — skill directories to **activate** (tier 2). Omit to use the packaged code-review skill.
 - `skillsDirs` — roots to **discover** for the catalog (tier 1); typically `.agents/skills`
 - `instructions` — extra system text for review / analyze / commit-message: literal strings and/or cwd-relative paths/globs to `.md` / `.txt` files (expanded with Bun.Glob). Example: `["Prefer citing tests.", "docs/review-style.md", ".agents/instructions/**/*.txt"]`
@@ -213,7 +240,7 @@ Fields:
 
 | Code | Meaning |
 |------|---------|
-| 0 | Clean / empty diff / skipped / all threshold findings ignored by analyst / log success / status clean / walk steps all ok / init ok |
+| 0 | Clean / empty diff / skipped / all threshold findings ignored by analyst / log success / status clean / walk steps all ok / init ok / hook ok |
 | 1 | At least one threshold finding with analyst verdict `remediate` (analyze / run / status) |
 | 2 | Config / skill / LLM / log / status validation failure / walk setup or step failure |
 
