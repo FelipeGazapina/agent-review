@@ -53,6 +53,7 @@
     "cli:status": "bun run ./bin/agent-review status",
     "cli:walk": "bun run ./bin/agent-review walk",
     "cli:init": "bun run ./bin/agent-review init",
+    "cli:hook": "bun run ./bin/agent-review hook",
     "test": "bun test ./src ./scripts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "biome check --write .",

@@ -85,6 +85,7 @@ export type CliCommand =
   | "status"
   | "walk"
   | "init"
+  | "hook"
   | "workstream";
 
 export type WorkstreamSubcommand = "start" | "resume" | "link" | "log" | "done";
@@ -130,7 +131,7 @@ export type CliOverrides = {
   maxCommits?: number;
   /** walk: leave detached worktrees after finish. */
   keepWorktree?: boolean;
-  /** init: overwrite existing files. */
+  /** init / hook: overwrite existing files. */
   force?: boolean;
   /** Explicit workstream id for link / log / done / review auto-link override. */
   workstreamId?: string;
@@ -389,6 +390,7 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     "status",
     "walk",
     "init",
+    "hook",
     "workstream",
   ]);
   const WORKSTREAM_SUBCOMMANDS = new Set<WorkstreamSubcommand>([

@@ -1,4 +1,5 @@
 import { type AgentReviewConfig, type ParsedCliArgs, parseArgs, resolveConfig } from "./config.ts";
+import { runHook } from "./lib/hook.ts";
 import { runInit } from "./lib/init.ts";
 import { migrateAgentReviewLayout } from "./lib/migrate-layout.ts";
 import { resolveOutputDir } from "./lib/observability.ts";
@@ -27,7 +28,8 @@ function printHelp(): void {
   console.log(`Usage: agent-review <command> [options]
 
 Commands:
-  init           Scaffold .agent-review.json, husky commit-msg, and operator skill
+  init           Scaffold .agent-review.json and operator skill
+  hook           Write husky commit-msg (opt-in; requires .husky/ or --force)
   run            Orchestrate review then analyze (default; used by hooks)
   review         Collect diff + review agent; print runId on stdout
   analyze        Triage findings for --run-id <id> from a prior review
@@ -47,7 +49,7 @@ Workstream subcommands:
   workstream done --force               skip retro.md gate
 
 Options:
-  --force                   init: overwrite existing; workstream done: skip retro.md gate
+  --force                   init/hook: overwrite existing; workstream done: skip retro.md gate
   --run-id <id>             analyze / status (status defaults to latest)
   --remediation <id|path>   required for log (<runId>/<index> or reviews/…)
   --workstream-id <id>      workstream link/log/done; also run/review auto-link override
@@ -88,7 +90,7 @@ Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
   workstreams.autoCommit  false (default): land via complete-feature; true: commit-chunks
   workstreams.autoLink    when true (default) and active-workstream is set, symlink new reviews
-  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init/workstream)
+  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init/hook/workstream)
           Prefer SKIP_AGENT_REVIEW=1 for local bypass so skip is not committed.
 
 Artifacts (repo-root-relative paths):
@@ -423,7 +425,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 2;
   }
 
-  // Exempt from skip: log / migrate / commit-message / status / init / workstream
+  // Exempt from skip: log / migrate / commit-message / status / init / hook / workstream
   if (
     config.skip &&
     overrides.command !== "log" &&
@@ -431,6 +433,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     overrides.command !== "commit-message" &&
     overrides.command !== "status" &&
     overrides.command !== "init" &&
+    overrides.command !== "hook" &&
     overrides.command !== "workstream"
   ) {
     const via =
@@ -444,6 +447,19 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       const result = runInit({ cwd, force: overrides.force === true });
       for (const line of result.messages) {
         console.error(line.length > 0 ? `agent-review: init: ${line}` : "");
+      }
+      return 0;
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      return 2;
+    }
+  }
+
+  if (overrides.command === "hook") {
+    try {
+      const result = runHook({ cwd, force: overrides.force === true });
+      for (const line of result.messages) {
+        console.error(line.length > 0 ? `agent-review: hook: ${line}` : "");
       }
       return 0;
     } catch (err) {
