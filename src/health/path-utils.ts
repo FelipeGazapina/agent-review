@@ -1,8 +1,6 @@
-import path from "node:path";
-
 /** Normalize to POSIX separators for stable substring checks. */
 export function asPosix(p: string): string {
-  return p.split(path.sep).join("/");
+  return p.replace(/\\/g, "/");
 }
 
 /** True if path contains `/dirName/` as a directory segment. */

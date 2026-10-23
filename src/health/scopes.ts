@@ -41,8 +41,9 @@ export function resolveHealthScope(input: {
     };
   }
 
+  const scopes = input.health.scopes ?? {};
   const id = (input.scopeId?.trim() || input.health.defaultScope || "root").trim();
-  const fromConfig = input.health.scopes[id];
+  const fromConfig = scopes[id];
   if (fromConfig !== undefined) {
     return scopeFromConfig(id, fromConfig);
   }
@@ -51,7 +52,7 @@ export function resolveHealthScope(input: {
     return scopeFromConfig("root", DEFAULT_ROOT_SCOPE);
   }
 
-  const known = Object.keys(input.health.scopes);
+  const known = Object.keys(scopes);
   const hint = known.length > 0 ? known.join(", ") : "root (default)";
   throw new Error(`Unknown health scope "${id}". Known: ${hint}`);
 }
