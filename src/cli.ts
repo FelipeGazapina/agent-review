@@ -18,6 +18,7 @@ import {
 } from "./lib/workstreams.ts";
 import { runAnalyzePhase } from "./pipeline/analyze-phase.ts";
 import { runCommitMessagePhase } from "./pipeline/commit-message-phase.ts";
+import { runHealthPhase } from "./pipeline/health-phase.ts";
 import { orchestrateInProcess, orchestrateViaCli } from "./pipeline/orchestrate.ts";
 import { runReviewPhase } from "./pipeline/review-phase.ts";
 import { runStatusPhase } from "./pipeline/status-phase.ts";
@@ -35,6 +36,7 @@ Commands:
   walk           Review each commit in from..to; catalog + dedupe findings
   log            Append a JSONL work-log entry under a remediation directory
   workstream     Opt-in workstream catalog (start|resume|link|log|done)
+  health         Code-health metrics (cccc / scc / lizard; no LLM)
   migrate        Convert legacy runs/ + remediations/ into reviews/<runId>/
   commit-message Draft a Conventional Commits message for the current diff
 
@@ -45,6 +47,9 @@ Workstream subcommands:
   workstream log --event … --message … [--workstream-id <id>]
   workstream done [--workstream-id <id>] [--message …]
   workstream done --force               skip retro.md gate
+
+Health subcommands (install cccc: cargo install cccc-cli; scc/lizard optional):
+  health all|snapshot|complexity|scc|lizard [--scope <id>] [--path <dir>] [--json]
 
 Options:
   --force                   init: overwrite existing; workstream done: skip retro.md gate
@@ -65,6 +70,8 @@ Options:
   --max-commits <n>         walk: cap commits after rev-list
   --keep-worktree           walk: leave detached worktrees under output-dir
   --scope staged|unstaged|working|range|commit|stdin
+                        health: named scope id from config.health.scopes
+  --path <dir>              health: ad-hoc path (overrides --scope); also log artifact path
   --commit <rev>            review a single commit (default HEAD); implies --scope commit
   --message-file <path>     read commit message from file (commit-msg hook $1)
   --base <ref>              required for --scope range
@@ -88,7 +95,8 @@ Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
   workstreams.autoCommit  false (default): land via complete-feature; true: commit-chunks
   workstreams.autoLink    when true (default) and active-workstream is set, symlink new reviews
-  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init/workstream)
+  health  scopes, thresholds for agent-review health (cccc/scc/lizard)
+  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init/workstream/health)
           Prefer SKIP_AGENT_REVIEW=1 for local bypass so skip is not committed.
 
 Artifacts (repo-root-relative paths):
@@ -99,6 +107,8 @@ Artifacts (repo-root-relative paths):
   <output-dir>/workstreams/<id>/{chunks.json,adr.md,todo.md,work-log.jsonl,commits/}
   <output-dir>/workstreams.jsonl
   <output-dir>/active-workstream
+  <output-dir>/code-health/<stamp>-<scope>/{summary.json,summary.md,…}
+  <output-dir>/code-health/latest-<scope>.json
   <output-dir>/walks/<walkId>/walk.json
   <output-dir>/walks/<walkId>/catalog.json
   <output-dir>/walks/<walkId>/summary.md
@@ -423,7 +433,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 2;
   }
 
-  // Exempt from skip: log / migrate / commit-message / status / init / workstream
+  // Exempt from skip: log / migrate / commit-message / status / init / workstream / health
   if (
     config.skip &&
     overrides.command !== "log" &&
@@ -431,7 +441,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     overrides.command !== "commit-message" &&
     overrides.command !== "status" &&
     overrides.command !== "init" &&
-    overrides.command !== "workstream"
+    overrides.command !== "workstream" &&
+    overrides.command !== "health"
   ) {
     const via =
       process.env.SKIP_AGENT_REVIEW?.trim() === "1" ? "SKIP_AGENT_REVIEW=1" : "config.skip=true";
@@ -458,6 +469,33 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       return 2;
     }
     return runWorkstreamCommand(overrides, config, cwd);
+  }
+
+  if (overrides.command === "health") {
+    const sub = overrides.healthSubcommand;
+    if (sub === undefined) {
+      console.error("health requires a subcommand: all|snapshot|complexity|scc|lizard");
+      return 2;
+    }
+    if (overrides.noEmit === true && sub === "snapshot") {
+      console.error("health snapshot cannot be used with --no-emit");
+      return 2;
+    }
+    const outcome = await runHealthPhase({
+      config,
+      cwd,
+      subcommand: sub,
+      healthScopeId: overrides.healthScopeId,
+      pathOverride: overrides.path,
+      json: overrides.json === true,
+    });
+    if (outcome.message !== undefined) {
+      console.error(outcome.message);
+    }
+    if (outcome.stdout !== undefined) {
+      console.log(outcome.stdout);
+    }
+    return outcome.exitCode;
   }
 
   if (overrides.command === "log") {

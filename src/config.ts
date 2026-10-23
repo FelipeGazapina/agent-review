@@ -1,9 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
+import { DEFAULT_EXCLUDE_DIR_NAMES } from "./health/scopes.ts";
+import type { HealthConfig, HealthScopeConfig } from "./health/types.ts";
 import type { DiffScope } from "./lib/git.ts";
 import { DEFAULT_OUTPUT_DIR } from "./lib/observability.ts";
 import { packagedCodeReviewSkillPath } from "./lib/package-root.ts";
 import type { FindingSeverity } from "./schema/index.ts";
+
+export type { HealthConfig, HealthScopeConfig };
 
 export type ModelConfig = {
   review: string;
@@ -41,6 +45,8 @@ export type AgentReviewConfig = {
   includeWorkstream: boolean;
   /** Workstream catalog land / link settings. */
   workstreams: WorkstreamsConfig;
+  /** Code-health metrics (cccc / scc / lizard). */
+  health: HealthConfig;
   /** Skip review pipeline commands (exit 0). */
   skip: boolean;
 };
@@ -56,6 +62,20 @@ export const DEFAULT_WORKSTREAMS_CONFIG: WorkstreamsConfig = {
   autoLink: true,
 };
 
+export const DEFAULT_HEALTH_CONFIG: HealthConfig = {
+  defaultScope: "root",
+  scopes: {
+    root: {
+      path: ".",
+      excludeDirNames: [...DEFAULT_EXCLUDE_DIR_NAMES],
+    },
+  },
+  cognitiveHotspotThreshold: 15,
+  cyclomaticHotspotThreshold: 15,
+  topN: 20,
+  alwaysRunLizard: false,
+};
+
 export const DEFAULT_CONFIG: AgentReviewConfig = {
   model: modelsFor(DEFAULT_MODEL_ID),
   skills: [packagedCodeReviewSkillPath()],
@@ -68,6 +88,7 @@ export const DEFAULT_CONFIG: AgentReviewConfig = {
   analystConcurrency: 4,
   includeWorkstream: false,
   workstreams: { ...DEFAULT_WORKSTREAMS_CONFIG },
+  health: { ...DEFAULT_HEALTH_CONFIG, scopes: { ...DEFAULT_HEALTH_CONFIG.scopes } },
   skip: false,
 };
 
@@ -85,9 +106,12 @@ export type CliCommand =
   | "status"
   | "walk"
   | "init"
-  | "workstream";
+  | "workstream"
+  | "health";
 
 export type WorkstreamSubcommand = "start" | "resume" | "link" | "log" | "done";
+
+export type HealthSubcommand = "all" | "snapshot" | "complexity" | "scc" | "lizard";
 
 export type CliOverrides = {
   configPath?: string;
@@ -140,6 +164,10 @@ export type CliOverrides = {
   linkRunId?: string;
   /** workstream start: optional title. */
   title?: string;
+  /** health CLI subcommand. */
+  healthSubcommand?: HealthSubcommand;
+  /** health: named scope id from config.health.scopes. */
+  healthScopeId?: string;
 };
 
 export type ParsedCliArgs = CliOverrides & {
@@ -248,6 +276,83 @@ function mergeWorkstreamsConfig(base: WorkstreamsConfig, value: unknown): Workst
   return out;
 }
 
+function parseHealthScopeConfig(value: unknown, label: string): HealthScopeConfig {
+  if (!isRecord(value)) throw new Error(`${label} must be an object`);
+  if (typeof value.path !== "string" || value.path.trim().length === 0) {
+    throw new Error(`${label}.path must be a non-empty string`);
+  }
+  const out: HealthScopeConfig = { path: value.path.trim() };
+  if (value.excludeDirNames !== undefined) {
+    out.excludeDirNames = parseStringArray(value.excludeDirNames, `${label}.excludeDirNames`);
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== "path" && key !== "excludeDirNames") {
+      throw new Error(`${label} unknown key "${key}"; expected path, excludeDirNames`);
+    }
+  }
+  return out;
+}
+
+export function mergeHealthConfig(base: HealthConfig, value: unknown): HealthConfig {
+  if (!isRecord(value)) {
+    throw new Error("health must be an object");
+  }
+  const out: HealthConfig = {
+    ...base,
+    scopes: { ...base.scopes },
+  };
+  if (value.defaultScope !== undefined) {
+    if (typeof value.defaultScope !== "string" || value.defaultScope.trim().length === 0) {
+      throw new Error("health.defaultScope must be a non-empty string");
+    }
+    out.defaultScope = value.defaultScope.trim();
+  }
+  if (value.scopes !== undefined) {
+    if (!isRecord(value.scopes)) throw new Error("health.scopes must be an object");
+    const scopes: Record<string, HealthScopeConfig> = {};
+    for (const [id, scopeVal] of Object.entries(value.scopes)) {
+      if (id.trim().length === 0) throw new Error("health.scopes keys must be non-empty");
+      scopes[id] = parseHealthScopeConfig(scopeVal, `health.scopes.${id}`);
+    }
+    out.scopes = scopes;
+  }
+  if (value.cognitiveHotspotThreshold !== undefined) {
+    out.cognitiveHotspotThreshold = parsePositiveInt(
+      value.cognitiveHotspotThreshold,
+      "health.cognitiveHotspotThreshold",
+    );
+  }
+  if (value.cyclomaticHotspotThreshold !== undefined) {
+    out.cyclomaticHotspotThreshold = parsePositiveInt(
+      value.cyclomaticHotspotThreshold,
+      "health.cyclomaticHotspotThreshold",
+    );
+  }
+  if (value.topN !== undefined) {
+    out.topN = parsePositiveInt(value.topN, "health.topN");
+  }
+  if (value.alwaysRunLizard !== undefined) {
+    if (typeof value.alwaysRunLizard !== "boolean") {
+      throw new Error("health.alwaysRunLizard must be a boolean");
+    }
+    out.alwaysRunLizard = value.alwaysRunLizard;
+  }
+  const allowed = new Set([
+    "defaultScope",
+    "scopes",
+    "cognitiveHotspotThreshold",
+    "cyclomaticHotspotThreshold",
+    "topN",
+    "alwaysRunLizard",
+  ]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new Error(`health unknown key "${key}"`);
+    }
+  }
+  return out;
+}
+
 export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
   if (!fs.existsSync(configPath)) {
     throw new Error(`config file not found: ${configPath}`);
@@ -317,6 +422,10 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
     partial.workstreams = workstreams;
   }
 
+  if (raw.health !== undefined) {
+    partial.health = mergeHealthConfig(DEFAULT_HEALTH_CONFIG, raw.health);
+  }
+
   if (raw.skip !== undefined) {
     if (typeof raw.skip !== "boolean") {
       throw new Error("skip must be a boolean");
@@ -374,6 +483,16 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
       ...filePartial.workstreams,
       ...overrides.workstreams,
     },
+    health: filePartial.health
+      ? {
+          ...DEFAULT_HEALTH_CONFIG,
+          ...filePartial.health,
+          scopes: { ...filePartial.health.scopes },
+        }
+      : {
+          ...DEFAULT_HEALTH_CONFIG,
+          scopes: { ...DEFAULT_HEALTH_CONFIG.scopes },
+        },
     skip: envSkip || (filePartial.skip ?? DEFAULT_CONFIG.skip),
   };
 }
@@ -390,6 +509,7 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     "walk",
     "init",
     "workstream",
+    "health",
   ]);
   const WORKSTREAM_SUBCOMMANDS = new Set<WorkstreamSubcommand>([
     "start",
@@ -397,6 +517,13 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     "link",
     "log",
     "done",
+  ]);
+  const HEALTH_SUBCOMMANDS = new Set<HealthSubcommand>([
+    "all",
+    "snapshot",
+    "complexity",
+    "scc",
+    "lizard",
   ]);
   let command: CliCommand = "run";
   let start = 0;
@@ -435,14 +562,31 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
       }
       throw new Error(`unexpected argument: ${arg}`);
     }
+    if (!arg.startsWith("-") && command === "health") {
+      if (out.healthSubcommand === undefined) {
+        if (!HEALTH_SUBCOMMANDS.has(arg as HealthSubcommand)) {
+          throw new Error(`health subcommand must be one of: ${[...HEALTH_SUBCOMMANDS].join("|")}`);
+        }
+        out.healthSubcommand = arg as HealthSubcommand;
+        continue;
+      }
+      throw new Error(`unexpected argument: ${arg}`);
+    }
     const next = () => {
       const value = argv[++i];
       if (value === undefined) throw new Error(`missing value for ${arg}`);
       return value;
     };
     if (arg === "--config") out.configPath = next();
-    else if (arg === "--scope") out.scope = parseScope(next(), "--scope");
-    else if (arg === "--base") out.base = next();
+    else if (arg === "--scope") {
+      if (command === "health") {
+        const id = next().trim();
+        if (id.length === 0) throw new Error("--scope must be a non-empty string");
+        out.healthScopeId = id;
+      } else {
+        out.scope = parseScope(next(), "--scope");
+      }
+    } else if (arg === "--base") out.base = next();
     else if (arg === "--head") out.head = next();
     else if (arg === "--commit") out.commit = next();
     else if (arg === "--from") out.from = next();

@@ -11,6 +11,11 @@ export {
   runCommitMessagePhase,
 } from "./commit-message-phase.ts";
 export {
+  type HealthPhaseInput,
+  type HealthPhaseOutcome,
+  runHealthPhase,
+} from "./health-phase.ts";
+export {
   artifactFromReview,
   defaultSpawnCli,
   type OrchestrateInProcessInput,
