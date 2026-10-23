@@ -57,8 +57,7 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
     });
     if (cccc.available) {
       const { raw: _raw, ...rest } = cccc;
-      console.log(JSON.stringify(rest, null, 2));
-      return { exitCode: 0 };
+      return { exitCode: 0, stdout: JSON.stringify(rest, null, 2) };
     }
     const lizard = collectLizardMetrics({
       repoRoot: input.cwd,
@@ -67,14 +66,20 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
       topN: input.config.health.topN,
       vendorDir: lizardVendorDir(outputDirAbs),
     });
-    console.log(JSON.stringify(lizard, null, 2));
-    return { exitCode: lizard.available ? 0 : 0 };
+    return {
+      exitCode: lizard.available ? 0 : 1,
+      stdout: JSON.stringify(lizard, null, 2),
+      message: lizard.available ? undefined : lizard.reason,
+    };
   }
 
   if (input.subcommand === "scc") {
     const scc = collectSccMetrics({ repoRoot: input.cwd, scope });
-    console.log(JSON.stringify(scc, null, 2));
-    return { exitCode: 0 };
+    return {
+      exitCode: scc.available ? 0 : 1,
+      stdout: JSON.stringify(scc, null, 2),
+      message: scc.available ? undefined : scc.reason,
+    };
   }
 
   if (input.subcommand === "lizard") {
@@ -85,8 +90,11 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
       topN: input.config.health.topN,
       vendorDir: lizardVendorDir(outputDirAbs),
     });
-    console.log(JSON.stringify(lizard, null, 2));
-    return { exitCode: 0 };
+    return {
+      exitCode: lizard.available ? 0 : 1,
+      stdout: JSON.stringify(lizard, null, 2),
+      message: lizard.available ? undefined : lizard.reason,
+    };
   }
 
   if (input.subcommand === "snapshot") {
@@ -97,9 +105,11 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
       health: input.config.health,
       outputDirAbs,
     });
-    console.error(`agent-review: health snapshot ${snap.relativeDir} (scope=${scope.id})`);
-    console.error(`agent-review: analyzed ${targetAbs}`);
-    return { exitCode: 0, stdout: snap.relativeDir };
+    return {
+      exitCode: 0,
+      stdout: snap.relativeDir,
+      message: `agent-review: health snapshot ${snap.relativeDir} (scope=${scope.id})\nagent-review: analyzed ${targetAbs}`,
+    };
   }
 
   // all
@@ -109,10 +119,6 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
     health: input.config.health,
     outputDirAbs,
   });
-  if (input.json === true) {
-    console.log(JSON.stringify(summary, null, 2));
-  } else {
-    console.log(summaryMarkdown(summary));
-  }
-  return { exitCode: 0 };
+  const stdout = input.json === true ? JSON.stringify(summary, null, 2) : summaryMarkdown(summary);
+  return { exitCode: 0, stdout };
 }

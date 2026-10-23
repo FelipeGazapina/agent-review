@@ -487,7 +487,7 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
       ? {
           ...DEFAULT_HEALTH_CONFIG,
           ...filePartial.health,
-          scopes: { ...DEFAULT_HEALTH_CONFIG.scopes, ...filePartial.health.scopes },
+          scopes: { ...filePartial.health.scopes },
         }
       : {
           ...DEFAULT_HEALTH_CONFIG,
