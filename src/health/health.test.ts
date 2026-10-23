@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_HEALTH_CONFIG, mergeHealthConfig, parseArgs } from "../config.ts";
 import { normalizeCcccJson } from "./cccc-metrics.ts";
-import { compareSummaries } from "./compare.ts";
+import { compareSummaries, formatDeltaMarkdown } from "./compare.ts";
+import { parseLizardCsv } from "./lizard-metrics.ts";
 import { asPosix, pathHasDir } from "./path-utils.ts";
 import { buildSccArgs, normalizeSccJson } from "./scc-metrics.ts";
 import { resolveHealthScope } from "./scopes.ts";
@@ -95,6 +96,27 @@ describe("normalizeCcccJson", () => {
   });
 });
 
+describe("parseLizardCsv", () => {
+  test("parses hotspots and skips excluded dirs", () => {
+    const csv = `NLOC,CCN,token,PARAM,length,location,file,function,long_name,start,end
+10,20,30,1,5,"x","src/a.ts","hot","hot",1,10
+5,2,10,0,3,"x","src/node_modules/pkg/b.ts","skip","skip",1,5
+8,16,20,1,4,"x","src/c.ts","also","also",2,9
+`;
+    const metrics = parseLizardCsv(csv, {
+      repoRoot: "/repo",
+      scope: { id: "root", path: ".", excludeDirNames: ["node_modules"] },
+      threshold: 15,
+      topN: 10,
+    });
+    expect(metrics.available).toBe(true);
+    expect(metrics.functionCount).toBe(2);
+    expect(metrics.hotspotCount).toBe(2);
+    expect(metrics.maxCcn).toBe(20);
+    expect(metrics.topHotspots[0]?.name).toBe("hot");
+  });
+});
+
 describe("scc helpers", () => {
   test("buildSccArgs includes --exclude-dir", () => {
     expect(buildSccArgs("/repo/src", ["node_modules", "dist"])).toEqual([
@@ -170,6 +192,21 @@ describe("summarize / compare", () => {
     const delta = compareSummaries(before, after);
     expect(delta.cognitiveHotspotCount).toBe(-2);
     expect(delta.cognitiveMax).toBe(-7);
+  });
+
+  test("formatDeltaMarkdown renders signed deltas", () => {
+    const md = formatDeltaMarkdown({
+      cognitiveHotspotCount: -2,
+      cyclomaticHotspotCount: 1,
+      cognitiveMax: null,
+      cyclomaticMax: 0,
+      cognitiveP95: -3,
+      sccTotalCode: 10,
+      lizardHotspotCount: null,
+    });
+    expect(md).toContain("| Cognitive hotspots | -2 |");
+    expect(md).toContain("| Cyclomatic hotspots | +1 |");
+    expect(md).toContain("| Cognitive max | — |");
   });
 });
 
