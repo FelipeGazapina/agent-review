@@ -44,6 +44,7 @@ From the repo root (`AI_GATEWAY_API_KEY` required except `log` / `status` /
 | `walk` | Review each commit in `from..to`; catalog + dedupe |
 | `log` | Append remediation `work-log.jsonl` |
 | `workstream` | Opt-in catalog: start / resume / link / log / done |
+| `health` | Polyglot metrics (cccc / scc / lizard; no LLM) |
 | `commit-message` | Draft Conventional Commits message (stdout) |
 | `migrate` | Legacy layout → `reviews/` |
 | `init` | Scaffold config, husky hook, operator skill |
@@ -71,6 +72,7 @@ Default stop threshold matches config `blockOn` **and more severe** (e.g.
 | [commit/SKILL.md](commit/SKILL.md) | Commit messages and commit-chunks landing |
 | [documentation/SKILL.md](documentation/SKILL.md) | README, ADR, Diátaxis docs, changelog |
 | [review/SKILL.md](review/SKILL.md) | Code review agent skill, history walks |
+| [code-health/SKILL.md](code-health/SKILL.md) | Polyglot metrics: `health` CLI, snapshot, refine |
 
 Activated LLM skill for review remains `skills/agent-review/review/code-review` in
 `.agent-review.json`. Do **not** activate this operator skill for the review/analyst agents.
