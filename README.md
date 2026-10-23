@@ -73,6 +73,12 @@ agent-review workstream log --event note --message "Chunks planned"
 agent-review workstream done
 agent-review workstream done --force   # skip retro gate
 
+# Code-health metrics (no LLM; install cccc: cargo install cccc-cli)
+agent-review health all --path src
+agent-review health snapshot --scope root
+agent-review health complexity --path src
+agent-review health all --json
+
 # Draft a Conventional Commits message for the staged diff
 agent-review commit-message
 
@@ -133,6 +139,7 @@ On success, stdout prints the **repo-root–relative** `work-log.jsonl` path.
 - `AI_GATEWAY_API_KEY` — Vercel AI Gateway (required for `run` / `review` / `analyze` / `commit-message` / `walk`). See [`.env.example`](./.env.example).
 - Optional `AGENT_REVIEW_MODEL` — override all agent models for this process (CLI `--model` still wins)
 - Optional `SKIP_AGENT_REVIEW=1` — skip `run` / `review` / `analyze` / `walk` without editing tracked config (overrides `skip` in `.agent-review.json`)
+- Optional **code-health** tools on PATH (not npm deps): `cccc` (`cargo install cccc-cli`), `scc`, `lizard` — used by `agent-review health`
 
 ## Husky hooks
 
@@ -162,6 +169,8 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 | `workstreams/<id>/` | Opt-in workstream catalog (`chunks.json`, `adr.md`, `todo.md`, `work-log.jsonl`, `retro.md`, `commits/` symlinks) |
 | `workstreams.jsonl` | One index line per workstream start/done |
 | `active-workstream` | Plain-text active workstream id (or absent) |
+| `code-health/<stamp>-<scope>/` | Health snapshot (`summary.json`, `summary.md`, tool JSON) |
+| `code-health/latest-<scope>.json` | Latest summary for before/after diffs |
 | `agents/<staticHash>.json.gz` | Content-addressed **static** agent capability snapshot (write-once, gzipped). Runtime/invocation **content** is not stored (PII risk); `staticHash` / `runtimeHash` / `invocationHash` remain link metadata on runs/decisions for attribution. |
 | `reviews.jsonl` | One compact index line per completed run (`path` relative, includes `gitHead`) |
 | `findings.jsonl` | One index line per finding (`fingerprint`, `key`, verdict, …) |
@@ -173,7 +182,7 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 
 ## Operator skill (Cursor / Claude Code)
 
-Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) with grouped sub-skills: [`workstream/`](./skills/agent-review/workstream/SKILL.md), [`remediation/`](./skills/agent-review/remediation/SKILL.md), [`commit/`](./skills/agent-review/commit/SKILL.md), [`documentation/`](./skills/agent-review/documentation/SKILL.md), [`review/`](./skills/agent-review/review/SKILL.md).
+Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) with grouped sub-skills: [`workstream/`](./skills/agent-review/workstream/SKILL.md), [`remediation/`](./skills/agent-review/remediation/SKILL.md), [`commit/`](./skills/agent-review/commit/SKILL.md), [`documentation/`](./skills/agent-review/documentation/SKILL.md), [`review/`](./skills/agent-review/review/SKILL.md), [`code-health/`](./skills/agent-review/code-health/SKILL.md).
 
 Prefer `bunx agent-review init` (copies into `.agents/skills/agent-review`). For local development of this package you can instead symlink:
 
@@ -195,7 +204,7 @@ cp node_modules/@khoralabs/agent-review/.agent-review.example.json .agent-review
 Fields:
 
 - `model` — gateway model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
-- `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` / `workstream` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
+- `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` / `workstream` / `health` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
 - `skills` — skill directories to **activate** (tier 2). Omit to use the packaged code-review skill.
 - `skillsDirs` — roots to **discover** for the catalog (tier 1); typically `.agents/skills`
 - `instructions` — extra system text for review / analyze / commit-message: literal strings and/or cwd-relative paths/globs to `.md` / `.txt` files (expanded with Bun.Glob). Example: `["Prefer citing tests.", "docs/review-style.md", ".agents/instructions/**/*.txt"]`
@@ -207,7 +216,13 @@ Fields:
 - `workstreams` — object:
   - `autoCommit` — when `true`, operators land via commit-chunks; when `false` (default), complete-feature without committing (session/user override allowed)
   - `autoLink` — when `true` (default) and `active-workstream` is set, symlink new reviews under that workstream’s `commits/` (never moves `reviews/`; override with `--workstream-id`). Legacy flat `workstreamAutoLink` still maps here.
-- `--no-emit` — CLI-only; skip writing pipeline artifacts
+- `health` — object for `agent-review health`:
+  - `defaultScope` — scope id (default `root`)
+  - `scopes` — map of id → `{ path, excludeDirNames? }`
+  - `cognitiveHotspotThreshold` / `cyclomaticHotspotThreshold` — hotspot cutoffs (default `15`)
+  - `topN` — hotspot list length (default `20`)
+  - `alwaysRunLizard` — also run lizard when cccc succeeded (default `false`)
+- `--no-emit` — CLI-only; skip writing pipeline artifacts (`health snapshot` rejects it)
 
 ## Exit codes
 
