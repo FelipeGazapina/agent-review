@@ -69,7 +69,7 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
     return {
       exitCode: lizard.available ? 0 : 1,
       stdout: JSON.stringify(lizard, null, 2),
-      message: lizard.available ? undefined : lizard.reason,
+      message: lizard.available ? undefined : lizard.skipReason,
     };
   }
 
@@ -78,7 +78,7 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
     return {
       exitCode: scc.available ? 0 : 1,
       stdout: JSON.stringify(scc, null, 2),
-      message: scc.available ? undefined : scc.reason,
+      message: scc.available ? undefined : scc.skipReason,
     };
   }
 
@@ -93,7 +93,7 @@ export async function runHealthPhase(input: HealthPhaseInput): Promise<HealthPha
     return {
       exitCode: lizard.available ? 0 : 1,
       stdout: JSON.stringify(lizard, null, 2),
-      message: lizard.available ? undefined : lizard.reason,
+      message: lizard.available ? undefined : lizard.skipReason,
     };
   }
 
