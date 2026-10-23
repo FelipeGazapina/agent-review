@@ -52,6 +52,7 @@
     "cli:commit-message": "bun run ./bin/agent-review commit-message",
     "cli:status": "bun run ./bin/agent-review status",
     "cli:walk": "bun run ./bin/agent-review walk",
+    "cli:health": "bun run ./bin/agent-review health",
     "cli:init": "bun run ./bin/agent-review init",
     "test": "bun test ./src ./scripts",
     "typecheck": "tsc --noEmit -p tsconfig.json",

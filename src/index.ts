@@ -29,6 +29,7 @@ export {
   type WorkstreamSubcommand,
   type WorkstreamsConfig,
 } from "./config.ts";
+export * from "./health/index.ts";
 export {
   type AgentCapabilitySnapshot,
   buildAgentCapabilitySnapshot,
