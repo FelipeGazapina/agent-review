@@ -14,6 +14,7 @@ export function resolveLanguageModel(
     ...(llm.apiKeyEnv !== undefined && llm.apiKeyEnv !== null ? { apiKeyEnv: llm.apiKeyEnv } : {}),
     ...(llm.baseURL !== undefined && llm.baseURL !== null ? { baseURL: llm.baseURL } : {}),
     ...(llm.headers !== undefined && llm.headers !== null ? { headers: llm.headers } : {}),
+    ...(llm.effort !== undefined ? { effort: llm.effort } : {}),
   };
   return adapter.createModel(ctx);
 }
