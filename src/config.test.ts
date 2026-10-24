@@ -3,7 +3,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { loadConfigFile, modelsFor, parseArgs, parseModelConfig, resolveConfig } from "./config.ts";
+import {
+  loadConfigFile,
+  mergeLlmConfig,
+  modelsFor,
+  parseArgs,
+  parseModelConfig,
+  resolveConfig,
+} from "./config.ts";
+import { DEFAULT_LLM_CONFIG } from "./llm/types.ts";
 
 describe("parseArgs / resolveConfig", () => {
   test("parses scope and skills flags", () => {
@@ -290,6 +298,45 @@ describe("parseArgs / resolveConfig", () => {
     expect(args.command).toBe("status");
     expect(args.runId).toBe("abc");
     expect(args.json).toBe(true);
+  });
+
+  test("mergeLlmConfig and resolveConfig llm / --provider", () => {
+    expect(mergeLlmConfig(DEFAULT_LLM_CONFIG, { provider: "openrouter" }).provider).toBe(
+      "openrouter",
+    );
+    expect(() => mergeLlmConfig(DEFAULT_LLM_CONFIG, { nope: true })).toThrow(/llm unknown key/);
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({
+        llm: {
+          provider: "openrouter",
+          headers: { "X-Title": "agent-review" },
+          baseURL: "https://openrouter.ai/api/v1",
+        },
+      }),
+    );
+    const fromFile = resolveConfig({ cwd: dir });
+    expect(fromFile.llm.provider).toBe("openrouter");
+    expect(fromFile.llm.headers?.["X-Title"]).toBe("agent-review");
+
+    const args = parseArgs(["review", "--provider", "gateway"]);
+    const switched = resolveConfig({ ...args, cwd: dir });
+    expect(switched.llm.provider).toBe("gateway");
+    expect(switched.llm.headers).toBeUndefined();
+    expect(switched.llm.baseURL).toBeUndefined();
+
+    const prev = process.env.AGENT_REVIEW_LLM_PROVIDER;
+    try {
+      process.env.AGENT_REVIEW_LLM_PROVIDER = "openai";
+      const envCfg = resolveConfig({ cwd: dir });
+      expect(envCfg.llm.provider).toBe("openai");
+      expect(envCfg.llm.headers).toBeUndefined();
+    } finally {
+      if (prev === undefined) delete process.env.AGENT_REVIEW_LLM_PROVIDER;
+      else process.env.AGENT_REVIEW_LLM_PROVIDER = prev;
+    }
   });
 
   test("AGENT_REVIEW_MODEL and SKIP_AGENT_REVIEW env overrides", () => {

@@ -554,11 +554,21 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
     ...fileLlm,
     ...(fileLlm.headers !== undefined ? { headers: { ...fileLlm.headers } } : {}),
   };
+  const priorProvider = llm.provider;
+  let providerOverridden = false;
   if (envProvider !== undefined && envProvider.length > 0) {
     llm.provider = envProvider;
+    providerOverridden = true;
   }
   if (cliProvider !== undefined && cliProvider.length > 0) {
     llm.provider = cliProvider;
+    providerOverridden = true;
+  }
+  // Drop provider-specific options when CLI/env switches the provider.
+  if (providerOverridden && llm.provider !== priorProvider) {
+    delete llm.baseURL;
+    delete llm.headers;
+    delete llm.apiKeyEnv;
   }
 
   return {

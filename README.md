@@ -10,7 +10,7 @@ Review and analyze are **adversarial quality-seeking**: they look for ways a cha
 bun add -d @khoralabs/agent-review
 bunx husky   # if you do not already use husky
 bunx agent-review init
-# add AI_GATEWAY_API_KEY to .env
+# add AI_GATEWAY_API_KEY (or OPENROUTER_API_KEY + llm.provider=openrouter) to .env
 bunx agent-review run --scope staged --message "feat: …"
 ```
 
@@ -138,8 +138,9 @@ On success, stdout prints the **repo-root–relative** `work-log.jsonl` path.
 ## Requirements
 
 - Bun `>=1.1`
-- `AI_GATEWAY_API_KEY` — Vercel AI Gateway (required for `run` / `review` / `analyze` / `commit-message` / `walk`). See [`.env.example`](./.env.example).
+- LLM provider API key matching `llm.provider` (default **gateway** → `AI_GATEWAY_API_KEY`; **openrouter** → `OPENROUTER_API_KEY`; also `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`). See [`.env.example`](./.env.example) and [ADR 0006](./docs/adr/0006-llm-provider-adapters.md).
 - Optional `AGENT_REVIEW_MODEL` — override all agent models for this process (CLI `--model` still wins)
+- Optional `AGENT_REVIEW_LLM_PROVIDER` — override `llm.provider` (CLI `--provider` still wins)
 - Optional `SKIP_AGENT_REVIEW=1` — skip `run` / `review` / `analyze` / `walk` without editing tracked config (overrides `skip` in `.agent-review.json`)
 - Optional **code-health** tools on PATH (not npm deps): `cccc` (`cargo install cccc-cli`), `scc`, `lizard` — used by `agent-review health`
 
@@ -156,7 +157,7 @@ bunx agent-review run --scope staged --include-workstream --message-file "$1"
 - **`pre-commit`** — Biome (`bun run format:check`); blocks on warnings or errors.
 - **`commit-msg`** — `bun ./bin/agent-review run --scope staged --include-workstream --message-file "$1"`
 
-Requires `.env` with `AI_GATEWAY_API_KEY` and a repo-root [`.agent-review.json`](./.agent-review.json).
+Requires `.env` with the selected provider key and a repo-root [`.agent-review.json`](./.agent-review.json).
 
 ## Artifacts
 
@@ -205,7 +206,13 @@ cp node_modules/@khoralabs/agent-review/.agent-review.example.json .agent-review
 
 Fields:
 
-- `model` — gateway model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
+- `model` — model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Format depends on `llm.provider` (Gateway/OpenRouter: `creator/model`). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
+- `llm` — LLM token API adapter:
+  - `provider` — `gateway` (default) \| `openrouter` \| `openai` \| `anthropic` \| `openai-compatible`
+  - `apiKeyEnv` — optional env var name (adapter default if omitted)
+  - `baseURL` — required for `openai-compatible`; optional override for OpenRouter/OpenAI/Anthropic
+  - `headers` — optional HTTP headers (e.g. OpenRouter `HTTP-Referer` / `X-Title`)
+  - Overrides: CLI `--provider` → `AGENT_REVIEW_LLM_PROVIDER` → config (switching provider clears file `baseURL` / `headers` / `apiKeyEnv`)
 - `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` / `workstream` / `health` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
 - `skills` — skill directories to **activate** (tier 2). Omit to use the packaged code-review skill.
 - `skillsDirs` — roots to **discover** for the catalog (tier 1); typically `.agents/skills`

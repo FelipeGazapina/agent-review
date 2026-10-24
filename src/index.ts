@@ -18,9 +18,12 @@ export {
   type CliCommand,
   type CliOverrides,
   DEFAULT_CONFIG,
+  DEFAULT_LLM_CONFIG,
   DEFAULT_WORKSTREAMS_CONFIG,
+  type LlmConfig,
   loadConfigFile,
   type ModelConfig,
+  mergeLlmConfig,
   modelsFor,
   type ParsedCliArgs,
   parseArgs,
@@ -228,6 +231,7 @@ export {
   type WorkstreamStatus,
   writeActiveWorkstreamId,
 } from "./lib/workstreams.ts";
+export * from "./llm/index.ts";
 export {
   artifactFromReview,
   type OrchestrateInProcessInput,
