@@ -31,8 +31,11 @@ selected. The adapter:
   reads of `.env*` files, and tells the model that `inspectBash` is not there
 - loads no user or project settings and no MCP servers, and does not persist
   sessions
-- removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the Claude Code
-  environment, so it uses the `claude` login or `CLAUDE_CODE_OAUTH_TOKEN`
+- removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`,
+  and the `CLAUDE_CODE_USE_*` cloud selectors from the Claude Code environment,
+  so it uses the `claude` login or `CLAUDE_CODE_OAUTH_TOKEN`
+- runs Claude Code in the checkout under review, so `walk` workers read their
+  own commit
 - accepts Claude aliases and ids, and strips a Gateway-style `anthropic/` prefix
 - creates a fresh provider model for each call, because a provider model
   resumes its previous Claude Code session on the next call

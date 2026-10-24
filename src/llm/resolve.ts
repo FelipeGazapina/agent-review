@@ -6,6 +6,7 @@ import { DEFAULT_LLM_CONFIG, type LlmConfig, type LlmProviderContext } from "./t
 export function resolveLanguageModel(
   modelId: string,
   llm: LlmConfig = DEFAULT_LLM_CONFIG,
+  cwd?: string,
 ): LanguageModel {
   ensureBuiltInAdapters();
   const adapter = getAdapter(llm.provider);
@@ -15,6 +16,7 @@ export function resolveLanguageModel(
     ...(llm.baseURL !== undefined && llm.baseURL !== null ? { baseURL: llm.baseURL } : {}),
     ...(llm.headers !== undefined && llm.headers !== null ? { headers: llm.headers } : {}),
     ...(llm.effort !== undefined ? { effort: llm.effort } : {}),
+    ...(cwd !== undefined ? { cwd } : {}),
   };
   return adapter.createModel(ctx);
 }

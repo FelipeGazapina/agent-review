@@ -307,7 +307,7 @@ function mergeWorkstreamsConfig(base: WorkstreamsConfig, value: unknown): Workst
   return out;
 }
 
-export function parseLlmEffort(value: unknown, label: string): LlmEffort {
+function parseLlmEffort(value: unknown, label: string): LlmEffort {
   const effort = typeof value === "string" ? value.trim() : value;
   if (!LLM_EFFORT_LEVELS.includes(effort as LlmEffort)) {
     throw new Error(`${label} must be one of ${LLM_EFFORT_LEVELS.join(", ")}`);

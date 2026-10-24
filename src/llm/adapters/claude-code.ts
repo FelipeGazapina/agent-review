@@ -11,6 +11,15 @@ type ClaudeCodeModule = typeof import("ai-sdk-provider-claude-code");
 
 const READ_ONLY_TOOLS = ["Read", "Grep", "Glob"];
 
+const BILLING_ENV = [
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_BASE_URL",
+  "CLAUDE_CODE_USE_BEDROCK",
+  "CLAUDE_CODE_USE_VERTEX",
+  "CLAUDE_CODE_USE_FOUNDRY",
+];
+
 const TOOL_NOTE =
   "inspectBash is not available in this session. Use the Read, Grep, and Glob tools to inspect code instead.";
 
@@ -124,6 +133,7 @@ export const claudeCodeAdapter: LlmProviderAdapter = {
     const fresh = () =>
       claudeCode(id, {
         ...(ctx.effort !== undefined ? { effort: ctx.effort } : {}),
+        ...(ctx.cwd !== undefined ? { cwd: ctx.cwd } : {}),
         tools: READ_ONLY_TOOLS,
         disallowedTools: ["Read(**/.env*)"],
         systemPrompt: TOOL_NOTE,
@@ -131,8 +141,8 @@ export const claudeCodeAdapter: LlmProviderAdapter = {
         settingSources: [],
         strictMcpConfig: true,
         persistSession: false,
-        // Keep billing on the logged-in subscription (or CLAUDE_CODE_OAUTH_TOKEN), never an API key.
-        env: { ANTHROPIC_API_KEY: undefined, ANTHROPIC_AUTH_TOKEN: undefined },
+        // Keep billing on the logged-in subscription (or CLAUDE_CODE_OAUTH_TOKEN), never an API key or cloud account.
+        env: Object.fromEntries(BILLING_ENV.map((key) => [key, undefined])),
       });
     // A provider model resumes its previous session on the next call; each agent call must start clean.
     const { specificationVersion, provider, modelId, supportedUrls } = fresh();

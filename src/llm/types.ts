@@ -14,6 +14,8 @@ export type LlmProviderContext = {
   /** Extra HTTP headers (e.g. OpenRouter HTTP-Referer / X-Title). */
   headers?: Record<string, string>;
   effort?: LlmEffort;
+  /** Checkout the agent inspects; adapters whose tools read files directly (claude-code) run there. */
+  cwd?: string;
 };
 
 /** Runtime adapter: one module per LLM token API. */
