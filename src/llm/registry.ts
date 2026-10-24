@@ -31,7 +31,7 @@ export function listProviderIds(): string[] {
   return [...adapters.keys()].sort();
 }
 
-/** Test helper: clear registry. Call `resetBuiltInRegistrationForTests` + `registerBuiltInAdapters`. */
+/** Test helper: clear registry. `ensureBuiltInAdapters` will re-register on next resolve. */
 export function clearAdaptersForTests(): void {
   adapters.clear();
 }
