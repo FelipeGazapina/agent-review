@@ -1,4 +1,5 @@
 import { type AgentReviewConfig, type ParsedCliArgs, parseArgs, resolveConfig } from "./config.ts";
+import { createAndCheckoutBranch } from "./lib/git-branch.ts";
 import { runInit } from "./lib/init.ts";
 import { migrateAgentReviewLayout } from "./lib/migrate-layout.ts";
 import { resolveOutputDir } from "./lib/observability.ts";
@@ -41,7 +42,7 @@ Commands:
   commit-message Draft a Conventional Commits message for the current diff
 
 Workstream subcommands:
-  workstream start [--title …] [--message …]
+  workstream start [--title …] [--message …] [--branch …]
   workstream resume <workstreamId>
   workstream link <runId> [--workstream-id <id>]
   workstream log --event … --message … [--workstream-id <id>]
@@ -57,6 +58,7 @@ Options:
   --remediation <id|path>   required for log (<runId>/<index> or reviews/…)
   --workstream-id <id>      workstream link/log/done; also run/review auto-link override
   --title <text>            workstream start: optional title
+  --branch <name>           workstream start: required when workstreams.autoBranch
   --event <name>            log / workstream log: started|note|artifact|status|done
   --message <text>          log / workstream: entry message (review: commit message)
   --path <rel>              log: artifact path relative to remediation/workstream dir
@@ -95,6 +97,7 @@ Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
   workstreams.autoCommit  false (default): land via complete-feature; true: commit-chunks
   workstreams.autoLink    when true (default) and active-workstream is set, symlink new reviews
+  workstreams.autoBranch  when true, start requires --branch and creates/checks out that branch first
   health  scopes, thresholds for agent-review health (cccc/scc/lizard)
   skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init/workstream/health)
           Prefer SKIP_AGENT_REVIEW=1 for local bypass so skip is not committed.
@@ -275,6 +278,27 @@ async function runWorkstreamCommand(
 
   try {
     if (sub === "start") {
+      const branchArg = overrides.branch?.trim();
+      const hasBranch = branchArg !== undefined && branchArg.length > 0;
+      if (config.workstreams.autoBranch) {
+        if (!hasBranch) {
+          console.error(
+            "workstream start: --branch is required when workstreams.autoBranch is true",
+          );
+          return 2;
+        }
+      } else if (hasBranch) {
+        console.error(
+          "workstream start: --branch is only allowed when workstreams.autoBranch is true",
+        );
+        return 2;
+      }
+
+      let createdBranch: string | undefined;
+      if (config.workstreams.autoBranch && hasBranch) {
+        createdBranch = await createAndCheckoutBranch(cwd, branchArg);
+      }
+
       const shortSha = (await revParseShort(cwd, "HEAD")) ?? "unknown";
       const gitHead = await revParseFull(cwd, "HEAD");
       const started = startWorkstream({
@@ -283,6 +307,7 @@ async function runWorkstreamCommand(
         shortSha,
         ...(gitHead !== undefined ? { gitHead } : {}),
         ...(overrides.title !== undefined ? { title: overrides.title } : {}),
+        ...(createdBranch !== undefined ? { branch: createdBranch } : {}),
       });
       if (overrides.message !== undefined && overrides.message.trim().length > 0) {
         appendWorkstreamWorkLog({
@@ -296,6 +321,9 @@ async function runWorkstreamCommand(
             ...(overrides.agent !== undefined ? { agent: overrides.agent } : {}),
           },
         });
+      }
+      if (createdBranch !== undefined) {
+        console.error(`agent-review: workstream branch ${createdBranch}`);
       }
       console.error(`agent-review: workstream started ${started.relativeDir}`);
       console.log(started.workstreamId);

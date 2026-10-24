@@ -81,6 +81,7 @@ export {
   type GitCommand,
   gitArgsForScope,
 } from "./lib/git.ts";
+export { assertValidBranchName, createAndCheckoutBranch } from "./lib/git-branch.ts";
 export {
   type InitOptions,
   type InitResult,

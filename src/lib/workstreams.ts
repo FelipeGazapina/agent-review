@@ -45,6 +45,8 @@ export type WorkstreamIndexLine = {
   workstreamId: string;
   title?: string;
   gitHead?: string;
+  /** Git branch created at start when workstreams.autoBranch ran. */
+  branch?: string;
   shortSha: string;
   status: WorkstreamStatus;
   path: string;
@@ -57,6 +59,7 @@ export type StartWorkstreamInput = {
   shortSha: string;
   gitHead?: string;
   title?: string;
+  branch?: string;
   at?: Date;
 };
 
@@ -215,6 +218,7 @@ export function startWorkstream(input: StartWorkstreamInput): StartWorkstreamRes
 
   const relativeDir = toRepoRelativePath(input.cwd, absoluteDir);
   const title = input.title?.trim();
+  const branch = input.branch?.trim();
   const { indexPath, relativeIndexPath } = appendWorkstreamsIndex({
     cwd: input.cwd,
     outputDir,
@@ -222,6 +226,7 @@ export function startWorkstream(input: StartWorkstreamInput): StartWorkstreamRes
       workstreamId,
       ...(title !== undefined && title.length > 0 ? { title } : {}),
       ...(input.gitHead !== undefined ? { gitHead: input.gitHead } : {}),
+      ...(branch !== undefined && branch.length > 0 ? { branch } : {}),
       shortSha: input.shortSha,
       status: "active",
       path: relativeDir,
