@@ -80,7 +80,8 @@ Options:
   --head <ref>              default HEAD for range
   --skills path,path        skill dirs to activate (tier 2; default: packaged code-review)
   --skills-dirs path,path   discovery roots for catalog (tier 1)
-  --model <gateway-id>      override all agents for this invocation
+  --model <id>              override all agents for this invocation
+  --provider <id>           llm provider: gateway|openrouter|openai|anthropic|openai-compatible
   --output-dir <path>       default .data/agent-review (use a separate dir for walk)
   --analyst-concurrency <n> max parallel analyst sessions (default 4)
   --include-workstream      attach prior same-HEAD review/remediation context
@@ -89,12 +90,15 @@ Options:
   -h, --help
 
 Env:
-  AI_GATEWAY_API_KEY     required for run/review/analyze/commit-message/walk
+  AI_GATEWAY_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY
+                         required for the selected llm.provider
   AGENT_REVIEW_MODEL     optional; override all agent models for this process
+  AGENT_REVIEW_LLM_PROVIDER  optional; override llm.provider
   SKIP_AGENT_REVIEW=1    optional; skip run/review/analyze/walk (overrides config.skip)
 
 Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
+  llm     { provider, apiKeyEnv?, baseURL?, headers? } — default provider gateway
   workstreams.autoCommit  false (default): land via complete-feature; true: commit-chunks
   workstreams.autoLink    when true (default) and active-workstream is set, symlink new reviews
   workstreams.autoBranch  when true, start requires --branch and creates/checks out that branch first

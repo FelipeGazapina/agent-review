@@ -17,6 +17,9 @@
     "autoLink": true,
     "autoBranch": false
   },
+  "llm": {
+    "provider": "gateway"
+  },
   "health": {
     "defaultScope": "src",
     "scopes": {

@@ -5,9 +5,11 @@ import type { HealthConfig, HealthScopeConfig } from "./health/types.ts";
 import type { DiffScope } from "./lib/git.ts";
 import { DEFAULT_OUTPUT_DIR } from "./lib/observability.ts";
 import { packagedCodeReviewSkillPath } from "./lib/package-root.ts";
+import { DEFAULT_LLM_CONFIG, type LlmConfig } from "./llm/types.ts";
 import type { FindingSeverity } from "./schema/index.ts";
 
-export type { HealthConfig, HealthScopeConfig };
+export type { HealthConfig, HealthScopeConfig, LlmConfig };
+export { DEFAULT_LLM_CONFIG };
 
 export type ModelConfig = {
   review: string;
@@ -52,6 +54,8 @@ export type AgentReviewConfig = {
   workstreams: WorkstreamsConfig;
   /** Code-health metrics (cccc / scc / lizard). */
   health: HealthConfig;
+  /** LLM token API provider (gateway default). */
+  llm: LlmConfig;
   /** Skip review pipeline commands (exit 0). */
   skip: boolean;
 };
@@ -95,6 +99,7 @@ export const DEFAULT_CONFIG: AgentReviewConfig = {
   includeWorkstream: false,
   workstreams: { ...DEFAULT_WORKSTREAMS_CONFIG },
   health: { ...DEFAULT_HEALTH_CONFIG, scopes: { ...DEFAULT_HEALTH_CONFIG.scopes } },
+  llm: { ...DEFAULT_LLM_CONFIG },
   skip: false,
 };
 
@@ -176,6 +181,8 @@ export type CliOverrides = {
   healthSubcommand?: HealthSubcommand;
   /** health: named scope id from config.health.scopes. */
   healthScopeId?: string;
+  /** LLM provider id override (gateway|openrouter|…). */
+  llmProvider?: string;
 };
 
 export type ParsedCliArgs = CliOverrides & {
@@ -288,6 +295,63 @@ function mergeWorkstreamsConfig(base: WorkstreamsConfig, value: unknown): Workst
       throw new Error(
         `workstreams unknown key "${key}"; expected autoCommit, autoLink, autoBranch`,
       );
+    }
+  }
+  return out;
+}
+
+export function mergeLlmConfig(base: LlmConfig, value: unknown): LlmConfig {
+  if (!isRecord(value)) {
+    throw new Error("llm must be an object");
+  }
+  const out: LlmConfig = { ...base };
+  if (value.provider !== undefined) {
+    if (typeof value.provider !== "string" || value.provider.trim().length === 0) {
+      throw new Error("llm.provider must be a non-empty string");
+    }
+    out.provider = value.provider.trim();
+  }
+  if (value.apiKeyEnv !== undefined) {
+    if (value.apiKeyEnv !== null) {
+      if (typeof value.apiKeyEnv !== "string" || value.apiKeyEnv.trim().length === 0) {
+        throw new Error("llm.apiKeyEnv must be a non-empty string");
+      }
+      out.apiKeyEnv = value.apiKeyEnv.trim();
+    } else {
+      delete out.apiKeyEnv;
+    }
+  }
+  if (value.baseURL !== undefined) {
+    if (value.baseURL !== null) {
+      if (typeof value.baseURL !== "string" || value.baseURL.trim().length === 0) {
+        throw new Error("llm.baseURL must be a non-empty string");
+      }
+      out.baseURL = value.baseURL.trim();
+    } else {
+      delete out.baseURL;
+    }
+  }
+  if (value.headers !== undefined) {
+    if (value.headers === null) {
+      delete out.headers;
+    } else {
+      if (!isRecord(value.headers)) {
+        throw new Error("llm.headers must be an object");
+      }
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries(value.headers)) {
+        if (typeof v !== "string") {
+          throw new Error(`llm.headers.${k} must be a string`);
+        }
+        headers[k] = v;
+      }
+      out.headers = headers;
+    }
+  }
+  const allowed = new Set(["provider", "apiKeyEnv", "baseURL", "headers"]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new Error(`llm unknown key "${key}"; expected provider, apiKeyEnv, baseURL, headers`);
     }
   }
   return out;
@@ -443,6 +507,10 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
     partial.health = mergeHealthConfig(DEFAULT_HEALTH_CONFIG, raw.health);
   }
 
+  if (raw.llm !== undefined) {
+    partial.llm = mergeLlmConfig(DEFAULT_LLM_CONFIG, raw.llm);
+  }
+
   if (raw.skip !== undefined) {
     if (typeof raw.skip !== "boolean") {
       throw new Error("skip must be a boolean");
@@ -478,6 +546,21 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
 
   const envSkip = process.env.SKIP_AGENT_REVIEW?.trim() === "1";
 
+  const cliProvider = overrides.llmProvider?.trim();
+  const envProvider = process.env.AGENT_REVIEW_LLM_PROVIDER?.trim();
+  const fileLlm = filePartial.llm ?? DEFAULT_LLM_CONFIG;
+  const llm: LlmConfig = {
+    ...DEFAULT_LLM_CONFIG,
+    ...fileLlm,
+    ...(fileLlm.headers !== undefined ? { headers: { ...fileLlm.headers } } : {}),
+  };
+  if (envProvider !== undefined && envProvider.length > 0) {
+    llm.provider = envProvider;
+  }
+  if (cliProvider !== undefined && cliProvider.length > 0) {
+    llm.provider = cliProvider;
+  }
+
   return {
     model,
     skills: overrides.skills ?? filePartial.skills ?? DEFAULT_CONFIG.skills,
@@ -510,6 +593,7 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
           ...DEFAULT_HEALTH_CONFIG,
           scopes: { ...DEFAULT_HEALTH_CONFIG.scopes },
         },
+    llm,
     skip: envSkip || (filePartial.skip ?? DEFAULT_CONFIG.skip),
   };
 }
@@ -652,7 +736,11 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     else if (arg === "--agent") out.agent = next();
     else if (arg === "--title") out.title = next();
     else if (arg === "--branch") out.branch = next();
-    else if (arg === "--workstream-id") out.workstreamId = next();
+    else if (arg === "--provider") {
+      const id = next().trim();
+      if (id.length === 0) throw new Error("--provider must be a non-empty string");
+      out.llmProvider = id;
+    } else if (arg === "--workstream-id") out.workstreamId = next();
     else if (arg === "--min-severity") {
       out.minSeverity = parseSeverity(next(), "--min-severity");
     } else if (arg === "--json") {

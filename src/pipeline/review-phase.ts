@@ -250,6 +250,7 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
       ...(input.inspectCwd !== undefined ? { inspectCwd: input.inspectCwd } : {}),
       runId,
       modelId: input.config.model.review,
+      llm: input.config.llm,
       diff,
       ...(commitMessage !== undefined ? { commitMessage } : {}),
       ...(workstreamContext !== undefined ? { workstreamContext } : {}),

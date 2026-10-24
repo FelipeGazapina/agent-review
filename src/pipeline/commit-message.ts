@@ -2,15 +2,18 @@ import type { ToolPipelineHooks } from "@khoralabs/agent-capabilities";
 import type { generateText, LanguageModel } from "ai";
 
 import { defineCommitMessageAgent, ensureAgentRegistered } from "../agents/index.ts";
-import { capabilitiesGenerateText, resolveGatewayModel } from "../lib/capabilities-generate.ts";
+import type { LlmConfig } from "../config.ts";
+import { capabilitiesGenerateText } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
 import { joinSystemParts } from "../lib/instructions.ts";
+import { DEFAULT_LLM_CONFIG, resolveLanguageModel } from "../llm/index.ts";
 import { type CommitMessageOutput, commitMessageOutputSchema } from "../schema/index.ts";
 
 export type RunCommitMessageAgentInput = {
   cwd: string;
   runId: string;
   modelId: string;
+  llm?: LlmConfig;
   diff: CollectedDiff;
   skillSystem: string;
   /** Formatted custom instructions from config. */
@@ -54,7 +57,7 @@ export async function runCommitMessageAgent(
 
   const model: LanguageModel | string = input.testModel
     ? input.modelId.trim() || "test-model"
-    : resolveGatewayModel(input.modelId);
+    : resolveLanguageModel(input.modelId, input.llm ?? DEFAULT_LLM_CONFIG);
 
   const generated = await capabilitiesGenerateText({
     agent: defined.agent,

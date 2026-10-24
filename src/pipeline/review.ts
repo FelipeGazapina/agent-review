@@ -2,8 +2,10 @@ import type { ToolPipelineHooks } from "@khoralabs/agent-capabilities";
 import type { generateText, LanguageModel } from "ai";
 
 import { defineReviewAgent, ensureAgentRegistered } from "../agents/index.ts";
-import { capabilitiesGenerateText, resolveGatewayModel } from "../lib/capabilities-generate.ts";
+import type { LlmConfig } from "../config.ts";
+import { capabilitiesGenerateText } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
+import { DEFAULT_LLM_CONFIG, resolveLanguageModel } from "../llm/index.ts";
 import { type ReviewResult, reviewResultSchema } from "../schema/index.ts";
 import { formatSkillSystem, type SkillRecord } from "../skills/index.ts";
 
@@ -13,6 +15,7 @@ export type RunReviewAgentInput = {
   inspectCwd?: string;
   runId: string;
   modelId: string;
+  llm?: LlmConfig;
   diff: CollectedDiff;
   commitMessage?: string;
   discoveredSkills: SkillRecord[];
@@ -70,7 +73,7 @@ export async function runReviewAgent(input: RunReviewAgentInput): Promise<RunRev
 
   const model: LanguageModel | string = input.testModel
     ? input.modelId.trim() || "test-model"
-    : resolveGatewayModel(input.modelId);
+    : resolveLanguageModel(input.modelId, input.llm ?? DEFAULT_LLM_CONFIG);
 
   const generated = await capabilitiesGenerateText({
     agent: defined.agent,
