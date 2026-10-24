@@ -11,6 +11,9 @@ export function registerAdapter(adapter: LlmProviderAdapter): void {
 }
 
 export function getAdapter(providerId: string): LlmProviderAdapter {
+  if (typeof providerId !== "string") {
+    throw new Error("llm provider must be a string");
+  }
   const id = providerId.trim();
   if (id.length === 0) {
     throw new Error("llm provider is required");
@@ -28,7 +31,7 @@ export function listProviderIds(): string[] {
   return [...adapters.keys()].sort();
 }
 
-/** Test helper: clear registry (re-register built-ins after). */
+/** Test helper: clear registry. Call `resetBuiltInRegistrationForTests` + `registerBuiltInAdapters`. */
 export function clearAdaptersForTests(): void {
   adapters.clear();
 }

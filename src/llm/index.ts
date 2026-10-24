@@ -1,9 +1,9 @@
-import { gatewayAdapter } from "./adapters/gateway.ts";
-import { registerAdapter } from "./registry.ts";
+import { registerBuiltInAdapters } from "./builtins.ts";
 
-registerAdapter(gatewayAdapter);
+registerBuiltInAdapters();
 
 export { gatewayAdapter } from "./adapters/gateway.ts";
+export { ensureBuiltInAdapters, registerBuiltInAdapters } from "./builtins.ts";
 export {
   clearAdaptersForTests,
   getAdapter,
