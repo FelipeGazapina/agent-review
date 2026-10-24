@@ -41,7 +41,7 @@ Land modes: [docs/adr/0003-workstream-land-mode.md](../../../docs/adr/0003-works
 ## CLI map
 
 ```sh
-bunx agent-review workstream start [--title "…"] [--message "…"]
+bunx agent-review workstream start [--title "…"] [--message "…"] [--branch "…"]
 bunx agent-review workstream resume <workstreamId>
 bunx agent-review workstream link <runId> [--workstream-id <id>]
 bunx agent-review workstream log --event note --message "…"
@@ -56,7 +56,8 @@ Read `.agent-review.json` before landing:
 ```json
 "workstreams": {
   "autoCommit": false,
-  "autoLink": true
+  "autoLink": true,
+  "autoBranch": false
 }
 ```
 
@@ -64,16 +65,17 @@ Read `.agent-review.json` before landing:
 |-----|---------|---------|
 | `autoCommit` | `false` | `false` → [complete-feature](../remediation/complete-feature/SKILL.md) (no git commit). `true` → [commit-chunks](../commit/commit-chunks/SKILL.md) (+ [remediate-all](../remediation/remediate-all/SKILL.md) on hook block). |
 | `autoLink` | `true` | When `active-workstream` is set, symlink new reviews under `commits/`. Set `false` to require explicit `workstream link`. |
+| `autoBranch` | `false` | When `true`, invent a conventional branch name (`feat/…`, `fix/…`, `chore/…`) and pass `--branch` to `workstream start`; CLI creates/checks out that branch **before** the catalog (fail-closed). When `false`, `--branch` is rejected. See [ADR 0005](../../../docs/adr/0005-workstream-auto-branch.md). |
 
 Legacy flat `workstreamAutoLink` still maps to `workstreams.autoLink` (nested wins if both set).
 
 **Session override:** if the user asks to commit (or not) for this workstream, that wins over config for the session.
 
-Link failures never fail the review.
+Link failures never fail the review. Auto-branch failures **do** fail `workstream start`.
 
 ## Operator stream (compose skills)
 
-1. **Start** — `workstream start`; note the printed id.
+1. **Start** — if `workstreams.autoBranch` is true, invent a conventional `--branch` name then `workstream start --branch …`; otherwise `workstream start`. Note the printed id.
 2. **Decide** — fill `adr.md` using [documentation/adr](../documentation/adr/SKILL.md)
    (prefer this file while a workstream is active; keep `docs/adr/` for project-level ADRs).
 3. **Plan** — edit `chunks.json` (kebab `key` per chunk, like finding keys) and

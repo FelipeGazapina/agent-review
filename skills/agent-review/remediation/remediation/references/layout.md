@@ -43,6 +43,7 @@ persisted reviews get a symlink under `workstreams/<id>/commits/`. Config key:
 `workstream done` requires a non-empty `retro.md` unless `--force` (see
 workstream/retro skill and ADR 0002). Land mode: `workstreams.autoCommit`
 (default `false` → complete-feature; `true` → commit-chunks) — ADR 0003.
+Auto-branch on start: `workstreams.autoBranch` (default `false`) — ADR 0005.
 
 With `--include-workstream`, later runs that share the same short-SHA suffix load sibling `reviews/<runId>/` folders (findings, remediations, prior diffs) as prompt context.
 
