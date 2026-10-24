@@ -7,6 +7,7 @@ import { toolMapToAiTools } from "@khoralabs/agent-capabilities-ai-sdk";
 import { type FlexibleSchema, generateText, type LanguageModel, Output, stepCountIs } from "ai";
 import type { z } from "zod";
 
+import { resolveLanguageModel } from "../llm/index.ts";
 import type { ReviewToolkitEnv } from "../tools/types.ts";
 
 export const DEFAULT_MAX_STEPS = 16;
@@ -35,13 +36,9 @@ export type CapabilitiesGenerateResult<T> = {
   toolRefs: Array<{ toolKey?: string; key?: string; toolHash: string }>;
 };
 
+/** @deprecated Prefer resolveLanguageModel(modelId, config.llm). Gateway default. */
 export function resolveGatewayModel(modelId: string): LanguageModel {
-  if (!process.env.AI_GATEWAY_API_KEY?.trim()) {
-    throw new Error("AI_GATEWAY_API_KEY environment variable not set");
-  }
-  const id = modelId.trim();
-  if (id.length === 0) throw new Error("model is required");
-  return id;
+  return resolveLanguageModel(modelId, { provider: "gateway" });
 }
 
 /**

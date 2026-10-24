@@ -1,0 +1,30 @@
+import type { LanguageModel } from "ai";
+import { readApiKey } from "../api-key.ts";
+import type { LlmProviderAdapter, LlmProviderContext } from "../types.ts";
+
+export const gatewayAdapter: LlmProviderAdapter = {
+  id: "gateway",
+  label: "Vercel AI Gateway",
+  defaultApiKeyEnv: "AI_GATEWAY_API_KEY",
+  createModel(ctx: LlmProviderContext): LanguageModel {
+    if (typeof ctx.baseURL === "string" && ctx.baseURL.trim().length > 0) {
+      throw new Error(
+        "gateway provider does not support llm.baseURL (use openrouter or openai-compatible)",
+      );
+    }
+    if (
+      ctx.headers !== null &&
+      ctx.headers !== undefined &&
+      typeof ctx.headers === "object" &&
+      Object.keys(ctx.headers).length > 0
+    ) {
+      throw new Error("gateway provider does not support llm.headers (use openrouter)");
+    }
+    const envName = ctx.apiKeyEnv?.trim() || gatewayAdapter.defaultApiKeyEnv;
+    readApiKey(envName);
+    const id = ctx.modelId.trim();
+    if (id.length === 0) throw new Error("model is required");
+    // AI SDK treats bare provider/model strings as AI Gateway models.
+    return id;
+  },
+};

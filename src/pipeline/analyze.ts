@@ -2,14 +2,16 @@ import type { RegisteredAgent, ToolPipelineHooks } from "@khoralabs/agent-capabi
 import type { generateText, LanguageModel } from "ai";
 
 import { defineAnalystAgent, ensureAgentRegistered } from "../agents/index.ts";
+import type { LlmConfig } from "../config.ts";
 import { stampFindingFingerprints } from "../lib/artifacts.ts";
-import { capabilitiesGenerateText, resolveGatewayModel } from "../lib/capabilities-generate.ts";
+import { capabilitiesGenerateText } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
 import { joinSystemParts } from "../lib/instructions.ts";
 import { mapPool } from "../lib/pool.ts";
 import { renderRemediationPlanMd, writeRemediationPlan } from "../lib/remediations.ts";
 import { withRetry } from "../lib/retry.ts";
 import { logStatus } from "../lib/status.ts";
+import { DEFAULT_LLM_CONFIG, resolveLanguageModel } from "../llm/index.ts";
 import {
   type AnalystDecision,
   type AnalystLlmOutput,
@@ -25,6 +27,7 @@ export type AnalyzeFindingsInput = {
   outputDir: string;
   runId: string;
   modelId: string;
+  llm?: LlmConfig;
   findings: Finding[];
   reviewSummary: string;
   diff: CollectedDiff;
@@ -231,7 +234,7 @@ export async function analyzeFindings(input: AnalyzeFindingsInput): Promise<Anal
 
   const model: LanguageModel | string = input.testModel
     ? input.modelId.trim() || "test-model"
-    : resolveGatewayModel(input.modelId);
+    : resolveLanguageModel(input.modelId, input.llm ?? DEFAULT_LLM_CONFIG);
 
   const results = await mapPool(input.findings, concurrency, (finding, i) =>
     triageOneFinding({

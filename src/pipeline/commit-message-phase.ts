@@ -74,6 +74,7 @@ export async function runCommitMessagePhase(
       cwd,
       runId: "commit-message",
       modelId: input.config.model.commitMessage,
+      llm: input.config.llm,
       diff,
       skillSystem: skills.system,
       ...(instructions.system.length > 0 ? { instructionsSystem: instructions.system } : {}),

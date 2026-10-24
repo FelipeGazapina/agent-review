@@ -32,8 +32,8 @@ read-only; you implement fixes (and commit only when using remediate-all).
 
 ## CLI map
 
-From the repo root (`AI_GATEWAY_API_KEY` required except `log` / `status` /
-`migrate` / `init` / `workstream`):
+From the repo root (LLM provider key required except `log` / `status` /
+`migrate` / `init` / `workstream` / `health` — see `llm.provider`):
 
 | Command | Purpose |
 |---------|---------|
