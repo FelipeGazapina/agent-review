@@ -3,6 +3,10 @@ import { registerBuiltInAdapters } from "./builtins.ts";
 registerBuiltInAdapters();
 
 export { gatewayAdapter } from "./adapters/gateway.ts";
+export {
+  OPENROUTER_DEFAULT_BASE_URL,
+  openrouterAdapter,
+} from "./adapters/openrouter.ts";
 export { ensureBuiltInAdapters, registerBuiltInAdapters } from "./builtins.ts";
 export {
   clearAdaptersForTests,

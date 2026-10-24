@@ -62,6 +62,7 @@
     "stage-release": "bun run scripts/stage-release.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.101",
     "@khoralabs/agent-capabilities": "^0.2.0",
     "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
     "@khoralabs/agent-capabilities-otel": "^0.2.0",

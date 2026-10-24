@@ -1,13 +1,6 @@
 import type { LanguageModel } from "ai";
+import { readApiKey } from "../api-key.ts";
 import type { LlmProviderAdapter, LlmProviderContext } from "../types.ts";
-
-function readApiKey(envName: string): string {
-  const value = process.env[envName]?.trim();
-  if (value === undefined || value.length === 0) {
-    throw new Error(`${envName} environment variable not set`);
-  }
-  return value;
-}
 
 export const gatewayAdapter: LlmProviderAdapter = {
   id: "gateway",
