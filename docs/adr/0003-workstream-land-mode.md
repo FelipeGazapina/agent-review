@@ -17,13 +17,15 @@ We will nest workstream settings under `.agent-review.json`:
 ```json
 "workstreams": {
   "autoCommit": false,
-  "autoLink": true
+  "autoLink": true,
+  "autoBranch": false
 }
 ```
 
 - **`autoCommit` default `false`:** operators land via complete-feature (no `git commit`).
 - **`autoCommit: true`:** operators land via commit-chunks; remediate-all on hook block.
 - **`autoLink`:** former top-level `workstreamAutoLink` (compat: flat key still accepted; nested wins).
+- **`autoBranch`:** opt-in create/checkout on `workstream start` — see [ADR 0005](./0005-workstream-auto-branch.md).
 - User chat override for a single session beats config.
 - No new CLI land verb — skill + config only.
 
@@ -42,9 +44,11 @@ We will nest workstream settings under `.agent-review.json`:
 ### Neutral
 
 - ADR 0001 remains the catalog layout; ADR 0002 remains the retro gate
+- Auto-branch on start is [ADR 0005](./0005-workstream-auto-branch.md)
 
 ## References
 
 - Operator skill: `skills/agent-review/workstream/SKILL.md`
 - [complete-feature](../../skills/agent-review/remediation/complete-feature/SKILL.md)
 - [commit-chunks](../../skills/agent-review/commit/commit-chunks/SKILL.md)
+- [ADR 0005](./0005-workstream-auto-branch.md)

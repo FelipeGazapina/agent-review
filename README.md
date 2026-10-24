@@ -66,6 +66,8 @@ agent-review log \
 
 # Opt-in workstream catalog (reviews stay under reviews/; commits/ are symlinks)
 agent-review workstream start --title "Add workstream catalog"
+# When workstreams.autoBranch is true:
+# agent-review workstream start --title "…" --branch feat/my-change
 agent-review workstream resume 20260828T143000Z-abc1234
 agent-review workstream link 20260828T150000Z-abc1234
 agent-review workstream log --event note --message "Chunks planned"
@@ -216,6 +218,7 @@ Fields:
 - `workstreams` — object:
   - `autoCommit` — when `true`, operators land via commit-chunks; when `false` (default), complete-feature without committing (session/user override allowed)
   - `autoLink` — when `true` (default) and `active-workstream` is set, symlink new reviews under that workstream’s `commits/` (never moves `reviews/`; override with `--workstream-id`). Legacy flat `workstreamAutoLink` still maps here.
+  - `autoBranch` — when `true`, `workstream start` requires `--branch <name>`, creates and checks out that branch before writing the catalog (fail-closed); when `false` (default), `--branch` is rejected
 - `health` — object for `agent-review health`:
   - `defaultScope` — scope id (default `root`)
   - `scopes` — map of id → `{ path, excludeDirNames? }`

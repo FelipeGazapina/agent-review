@@ -138,6 +138,16 @@ describe("parseArgs / resolveConfig", () => {
     expect(start.workstreamSubcommand).toBe("start");
     expect(start.title).toBe("Feat");
 
+    const withBranch = parseArgs([
+      "workstream",
+      "start",
+      "--title",
+      "Feat",
+      "--branch",
+      "feat/auto-branch",
+    ]);
+    expect(withBranch.branch).toBe("feat/auto-branch");
+
     const resume = parseArgs(["workstream", "resume", "20260101T000000Z-abc"]);
     expect(resume.workstreamSubcommand).toBe("resume");
     expect(resume.workstreamId).toBe("20260101T000000Z-abc");
@@ -164,7 +174,11 @@ describe("parseArgs / resolveConfig", () => {
 
   test("workstreams defaults and nested/flat compat", () => {
     const defaults = resolveConfig({ cwd: "/tmp/does-not-exist-agent-review" });
-    expect(defaults.workstreams).toEqual({ autoCommit: false, autoLink: true });
+    expect(defaults.workstreams).toEqual({
+      autoCommit: false,
+      autoLink: true,
+      autoBranch: false,
+    });
 
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
     fs.writeFileSync(
@@ -173,17 +187,22 @@ describe("parseArgs / resolveConfig", () => {
       "utf8",
     );
     expect(resolveConfig({ cwd: dir }).workstreams.autoLink).toBe(false);
+    expect(resolveConfig({ cwd: dir }).workstreams.autoBranch).toBe(false);
 
     fs.writeFileSync(
       path.join(dir, ".agent-review.json"),
       JSON.stringify({
         workstreamAutoLink: false,
-        workstreams: { autoCommit: true, autoLink: true },
+        workstreams: { autoCommit: true, autoLink: true, autoBranch: true },
       }),
       "utf8",
     );
     const nestedWins = resolveConfig({ cwd: dir });
-    expect(nestedWins.workstreams).toEqual({ autoCommit: true, autoLink: true });
+    expect(nestedWins.workstreams).toEqual({
+      autoCommit: true,
+      autoLink: true,
+      autoBranch: true,
+    });
 
     const overridden = resolveConfig({
       cwd: dir,
@@ -191,6 +210,14 @@ describe("parseArgs / resolveConfig", () => {
     });
     expect(overridden.workstreams.autoCommit).toBe(false);
     expect(overridden.workstreams.autoLink).toBe(true);
+    expect(overridden.workstreams.autoBranch).toBe(true);
+
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({ workstreams: { nope: true } }),
+      "utf8",
+    );
+    expect(() => resolveConfig({ cwd: dir })).toThrow(/autoCommit, autoLink, autoBranch/);
   });
 
   test("parseModelConfig accepts string and partial object", () => {

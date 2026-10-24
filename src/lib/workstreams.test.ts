@@ -57,6 +57,22 @@ describe("workstreams", () => {
     expect(parsed.status).toBe("active");
   });
 
+  test("start records optional branch on index line", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-"));
+    const started = startWorkstream({
+      cwd: dir,
+      outputDir: dir,
+      shortSha: "abc1234",
+      branch: "feat/recorded",
+      at: new Date(Date.UTC(2026, 7, 28, 15, 0, 0)),
+    });
+    const parsed = JSON.parse(
+      fs.readFileSync(path.join(dir, "workstreams.jsonl"), "utf8").trim(),
+    ) as { branch?: string };
+    expect(parsed.branch).toBe("feat/recorded");
+    expect(started.workstreamId).toBe("20260828T150000Z-abc1234");
+  });
+
   test("link creates relative symlink; idempotent on second call", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-"));
     const started = startWorkstream({

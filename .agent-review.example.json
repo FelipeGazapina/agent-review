@@ -14,7 +14,8 @@
   "includeWorkstream": false,
   "workstreams": {
     "autoCommit": false,
-    "autoLink": true
+    "autoLink": true,
+    "autoBranch": false
   },
   "health": {
     "defaultScope": "src",
