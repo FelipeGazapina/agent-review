@@ -2,7 +2,10 @@ import { registerBuiltInAdapters } from "./builtins.ts";
 
 registerBuiltInAdapters();
 
+export { anthropicAdapter } from "./adapters/anthropic.ts";
 export { gatewayAdapter } from "./adapters/gateway.ts";
+export { openaiAdapter } from "./adapters/openai.ts";
+export { openaiCompatibleAdapter } from "./adapters/openai-compatible.ts";
 export {
   OPENROUTER_DEFAULT_BASE_URL,
   openrouterAdapter,

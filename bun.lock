@@ -5,6 +5,7 @@
     "": {
       "name": "@khoralabs/agent-review",
       "dependencies": {
+        "@ai-sdk/anthropic": "^4.0.87",
         "@ai-sdk/openai": "^4.0.101",
         "@khoralabs/agent-capabilities": "^0.2.0",
         "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
@@ -25,6 +26,8 @@
     },
   },
   "packages": {
+    "@ai-sdk/anthropic": ["@ai-sdk/anthropic@4.0.87", "", { "dependencies": { "@ai-sdk/provider": "4.0.33", "@ai-sdk/provider-utils": "5.0.67" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-x55N7G47mh9p38C2a6qMAzmUxlgKDCXoE9ohRaF4D3hcOGQrYIOZZ/9Iv4Uf9/OxlNDog9Yz4YPX2GL1+otGlg=="],
+
     "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.51", "", { "dependencies": { "@ai-sdk/provider": "4.0.7", "@ai-sdk/provider-utils": "5.0.27", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-tQxWGUbg/O3A5EgekJo/C2byLVQ1r+vL6QdEVWmxUSnPhdCupcOeDbQO1tv9Um40VrdwYuSWlYzcbWvtlG5bOA=="],
 
     "@ai-sdk/openai": ["@ai-sdk/openai@4.0.101", "", { "dependencies": { "@ai-sdk/provider": "4.0.33", "@ai-sdk/provider-utils": "5.0.67" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-GZ57KdfEfdHcM+Kkf1KsXq8T2KM2uG6BwPvWzL25F5uKjozpflol6hjxveKEf9v9YtbaKYi+t1PeaQ1g0jOThw=="],
