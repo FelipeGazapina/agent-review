@@ -14,7 +14,7 @@
   "workstreams": {
     "autoCommit": false,
     "autoLink": true,
-    "autoBranch": false
+    "autoBranch": true
   },
   "skip": false
 }
