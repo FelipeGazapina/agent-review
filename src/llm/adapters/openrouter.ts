@@ -28,6 +28,7 @@ export const openrouterAdapter: LlmProviderAdapter = {
       ...(headers !== undefined ? { headers } : {}),
       name: "openrouter",
     });
-    return provider(id);
+    // Cast: nested @ai-sdk/provider copies under ai vs @ai-sdk/openai disagree at typecheck.
+    return provider(id) as LanguageModel;
   },
 };
