@@ -27,6 +27,11 @@ export type WorkstreamsConfig = {
    * that workstream's commits/ (opt-in overlay; never moves reviews/).
    */
   autoLink: boolean;
+  /**
+   * When true, `workstream start` requires `--branch` and creates/checks out
+   * that branch before writing the catalog (fail-closed).
+   */
+  autoBranch: boolean;
 };
 
 export type AgentReviewConfig = {
@@ -60,6 +65,7 @@ export function modelsFor(id: string): ModelConfig {
 export const DEFAULT_WORKSTREAMS_CONFIG: WorkstreamsConfig = {
   autoCommit: false,
   autoLink: true,
+  autoBranch: false,
 };
 
 export const DEFAULT_HEALTH_CONFIG: HealthConfig = {
@@ -164,6 +170,8 @@ export type CliOverrides = {
   linkRunId?: string;
   /** workstream start: optional title. */
   title?: string;
+  /** workstream start: branch name when workstreams.autoBranch is true. */
+  branch?: string;
   /** health CLI subcommand. */
   healthSubcommand?: HealthSubcommand;
   /** health: named scope id from config.health.scopes. */
@@ -268,9 +276,18 @@ function mergeWorkstreamsConfig(base: WorkstreamsConfig, value: unknown): Workst
     }
     out.autoLink = value.autoLink;
   }
+  if (value.autoBranch !== undefined) {
+    if (typeof value.autoBranch !== "boolean") {
+      throw new Error("workstreams.autoBranch must be a boolean");
+    }
+    out.autoBranch = value.autoBranch;
+  }
+  const allowed = new Set(["autoCommit", "autoLink", "autoBranch"]);
   for (const key of Object.keys(value)) {
-    if (key !== "autoCommit" && key !== "autoLink") {
-      throw new Error(`workstreams unknown key "${key}"; expected autoCommit, autoLink`);
+    if (!allowed.has(key)) {
+      throw new Error(
+        `workstreams unknown key "${key}"; expected autoCommit, autoLink, autoBranch`,
+      );
     }
   }
   return out;
@@ -634,6 +651,7 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     else if (arg === "--status") out.status = next();
     else if (arg === "--agent") out.agent = next();
     else if (arg === "--title") out.title = next();
+    else if (arg === "--branch") out.branch = next();
     else if (arg === "--workstream-id") out.workstreamId = next();
     else if (arg === "--min-severity") {
       out.minSeverity = parseSeverity(next(), "--min-severity");
